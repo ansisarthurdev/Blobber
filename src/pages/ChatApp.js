@@ -21,6 +21,8 @@ const ChatApp = () => {
 
 const Wrapper = styled.div`
 display: flex;
+max-width: 1440px;
+margin: 0 auto;
 `
 
 export default ChatApp

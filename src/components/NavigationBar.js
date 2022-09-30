@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import styled from 'styled-components'
 
 //icons
@@ -9,8 +9,14 @@ import { Chat } from '@styled-icons/bootstrap/Chat'
 import { People } from '@styled-icons/bootstrap/People'
 import { BellOutline } from '@styled-icons/evaicons-outline/BellOutline'
 import { SettingsOutline } from '@styled-icons/evaicons-outline/SettingsOutline'
+import { LogOut } from '@styled-icons/ionicons-outline/LogOut'
+import { Profile } from '@styled-icons/icomoon/Profile'
+import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 
 const NavigationBar = () => {
+
+  const [settings, openSettings] = useState(false);
+
   return (
     <Wrapper>
       <h3 className='logo'>blobber.</h3>
@@ -49,7 +55,7 @@ const NavigationBar = () => {
             <BellOutline className='icon'/>
           </NavigationItem>
 
-          <NavigationItem>
+          <NavigationItem onClick={() => openSettings(true)}>
             <div className='active-bar' />
             <SettingsOutline className='icon'/>
           </NavigationItem>
@@ -57,11 +63,78 @@ const NavigationBar = () => {
           <UserAvatar>
             <img alt='' src={`https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU`}/>
           </UserAvatar>
+
+          {settings && 
+          <>
+          <BackgroundFader />
+          <ModalSettings>
+            <h3>Settings</h3>
+            <div style={{display: 'flex', padding: 20}}>
+            <div className='bar'><LogOut className='icon' />Logout</div>
+            <div className='bar'><Profile className='icon' />Edit Profile</div>
+            </div>
+
+            <CloseOutline className='icon-close' onClick={() => openSettings(false)}/>
+          </ModalSettings>
+          </>
+          }
+          
         </div>
       </div>
     </Wrapper>
   )
 }
+
+const BackgroundFader = styled.div`
+position: absolute;
+z-index: 90;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: #1b1b1b80;
+`
+
+const ModalSettings = styled.div`
+position: absolute;
+color: white;
+background: var(--grey);
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+z-index: 100;
+width: 50%;
+text-align: center;
+
+.icon-close {
+  width: 24px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+}
+
+.bar {
+  width: 50%;
+  transition: .3s ease-out;
+  background: transparent;
+  cursor: pointer;
+  padding: 10px;
+
+  :hover {
+    background: var(--light-grey);
+  }
+}
+
+.icon {
+  width: 24px;
+  margin-right: 10px;
+}
+
+h3 {
+  padding: 20px;
+}
+`
 
 const UserAvatar = styled.div`
 width: 80%;
@@ -89,6 +162,7 @@ padding: 10px 0;
 position: relative;
 margin-bottom: 1rem;
 transition: .3s ease-out;
+position: relative;
 
 :hover {
   background: #268c6126;

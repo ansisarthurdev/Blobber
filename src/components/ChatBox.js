@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import styled from 'styled-components'
 
 //icons
@@ -8,9 +8,25 @@ import { MoreCircle } from '@styled-icons/fluentui-system-regular/MoreCircle'
 import { Send } from '@styled-icons/boxicons-solid/Send'
 import { FileImage } from '@styled-icons/boxicons-solid/FileImage'
 
+//redux
+import { openChatInfo, selectChatInfo } from '../app/appSlice'
+import { useDispatch, useSelector } from 'react-redux'
+
+import { motion } from 'framer-motion/dist/framer-motion'
+
 const ChatBox = () => {
+
+  const dispatch = useDispatch();
+  const chatInfoContainerState = useSelector(selectChatInfo);
+
+  //scroll down automatically.
+  useEffect(() => {
+    let chatContent = document.getElementById('chat-content');
+    chatContent.scrollTop = chatContent.scrollHeight;
+  }, [])
+
   return (
-    <Wrapper>
+    <Wrapper style={{width: chatInfoContainerState ? '52%' : '72%'}}>
       <ChatInfo>
         <div className='chat-info'> 
           <div style={{marginRight: 10}}>
@@ -25,11 +41,11 @@ const ChatBox = () => {
         <div className='chat-options'>
           <CameraVideo className='icon' />
           <Call className='icon' />
-          <MoreCircle className='icon' />
+          <MoreCircle className='icon' onClick={() => dispatch(openChatInfo(true))}/>
         </div>
       </ChatInfo>
       
-      <ChatContent>
+      <ChatContent id='chat-content'>
         <Message className='received'>
           <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
           <div className='message-content'>
@@ -126,6 +142,10 @@ const ChatBox = () => {
           </div>
         </Message>
 
+        <motion.div
+          initial={{ opacity: 0, duration: 1, delay: 2 }}
+          whileInView={{ opacity: 1 }}
+        >
         <Message className='received'>
           <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
           <div className='message-content'>
@@ -137,6 +157,7 @@ const ChatBox = () => {
             <img className='message-image' src='https://images.unsplash.com/photo-1664553118375-8dcc9eda394b?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=580&q=80' alt=''/>
           </div>
         </Message>
+        </motion.div>
       </ChatContent>
 
       <ChatMessage>
@@ -160,7 +181,19 @@ max-width: 80%;
 margin-bottom: 20px;
 
 :nth-last-child(1){
-  margin-bottom: 15vh;
+  margin-bottom: 30vh;
+}
+
+@media(min-height: 1000px){
+  :nth-last-child(1){
+    margin-bottom: 20vh;
+  }
+}
+
+@media(min-height: 1350px){
+  :nth-last-child(1){
+    margin-bottom: 15vh;
+  }
 }
 
 .message-info {
@@ -203,6 +236,7 @@ img {
   object-fit: contain;
   border-radius: 50%;
   margin-right: 10px;
+  user-select: none;
 }
 `
 
@@ -212,7 +246,7 @@ border-right: 1px solid var(--light-grey);
 padding: 0px 20px;
 display: flex;
 flex-direction: column;
-height: 80%;
+height: 100%;
 position: absolute;
 overflow-y: scroll;
 width: calc(100% - 42px);
@@ -351,9 +385,9 @@ img {
 `
 
 const Wrapper = styled.div`
-width: 52%;
 background: var(--dark-grey);
 position: relative;
+transition: .3s ease-out;
 `
 
 export default ChatBox
