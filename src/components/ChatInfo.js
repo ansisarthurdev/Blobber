@@ -112,6 +112,7 @@ p {
   right: 40px;
   z-index: 100;
   text-shadow: 2px 4px 3px rgba(0,0,0,0.3);
+  user-select: none;
 }
 
 img {

@@ -298,8 +298,7 @@ p {
 `
 
 const MessageTop = styled.div`
-height: 20%;
-padding: 0 20px;
+padding: 20px;
 display: flex;
 flex-direction: column;
 justify-content: center;

@@ -103,7 +103,8 @@ top: 50%;
 left: 50%;
 transform: translate(-50%, -50%);
 z-index: 100;
-width: 50%;
+width: 80%;
+max-width: 500px;
 text-align: center;
 
 .icon-close {
@@ -210,7 +211,7 @@ height: 100vh;
 .logo {
   color: white;
   font-size: .9rem;
-  height: 15%;
+  padding: 30px 0;
   display: flex;
   align-items: center;
   justify-content: center;
