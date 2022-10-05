@@ -13,9 +13,22 @@ import { LogOut } from '@styled-icons/ionicons-outline/LogOut'
 import { Profile } from '@styled-icons/icomoon/Profile'
 import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 
+//firebase
+import { useSelector } from 'react-redux'
+import { selectUser } from '../app/appSlice'
+import { auth } from '../app/firebase'
+import { useNavigate } from 'react-router-dom'
+
 const NavigationBar = () => {
 
   const [settings, openSettings] = useState(false);
+  const navigate = useNavigate();
+  const user = useSelector(selectUser);
+
+  const logOut = () => {
+    auth.signOut();
+    navigate('/');
+  }
 
   return (
     <Wrapper>
@@ -61,7 +74,7 @@ const NavigationBar = () => {
           </NavigationItem>
 
           <UserAvatar>
-            <img alt='' src={`https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU`}/>
+            <img alt='' src={user?.photoURL}/>
           </UserAvatar>
 
           {settings && 
@@ -70,7 +83,7 @@ const NavigationBar = () => {
           <ModalSettings>
             <h3>Settings</h3>
             <div style={{display: 'flex', padding: 20}}>
-            <div className='bar'><LogOut className='icon' />Logout</div>
+            <div className='bar' onClick={logOut}><LogOut className='icon' />Logout</div>
             <div className='bar'><Profile className='icon' />Edit Profile</div>
             </div>
 

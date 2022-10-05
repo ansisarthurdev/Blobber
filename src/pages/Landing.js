@@ -1,18 +1,72 @@
-import React from 'react'
+import React, { useState } from 'react'
 import styled from 'styled-components'
 
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
-import Lottie from "lottie-react";
-import chat from "../animation/chat.json";
+import Lottie from "lottie-react"
+import chat from "../animation/chat.json"
 
 //icons
 import { ChatDots } from '@styled-icons/bootstrap/ChatDots'
 import { Document } from '@styled-icons/fluentui-system-filled/Document'
 import { Cloud } from '@styled-icons/bootstrap/Cloud'
+import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
+import { Google } from '@styled-icons/boxicons-logos/Google'
+
+//firebase
+import { useSelector } from 'react-redux'
+import { selectUser } from '../app/appSlice'
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth"
+import { auth, db } from '../app/firebase'
+import { doc, setDoc, getDoc } from "firebase/firestore"
 
 const Landing = () => {
     
+    const [popup, setPopup] = useState(false);
+    const provider = new GoogleAuthProvider();
+    const navigate = useNavigate();
+    const user = useSelector(selectUser);
+
+    const popUpHook = () => {
+
+        const html = document.querySelector('html');
+
+        if(!popup){
+            html.style.overflow = 'hidden';
+            setPopup(true);
+        } else {
+            html.style.overflowY = 'scroll';
+            setPopup(false);
+        }
+    }
+
+    const signInWithGoogle = () => {
+        signInWithPopup(auth, provider)
+        .then(async (result) => {
+          const user = result.user;
+    
+          //check if user exists, if not - add to db
+          const docRef = doc(db, 'users', user?.uid);
+          const docSnap = await getDoc(docRef);
+    
+          if (docSnap.exists()) {
+            navigate('/app');
+          } else {
+            setDoc(doc(db, 'users', user.uid), {
+              uid: user.uid,
+              email: user.email,
+              userDisplayName: user.displayName,
+              userImage: user.photoURL,
+            });
+            navigate('/app');
+          }
+        })
+        .catch((error) => {
+          const errorMessage = error.message;
+          console.log(errorMessage)
+        });
+      }
+
     return(
         <Wrapper>
             <img src='images/gradient.svg' alt='' style={{width: '1920px', height: '600px', position: 'absolute', top: -110, left: 0, zIndex: -1, objectFit: 'cover', left: '50%', transform: 'translateX(-50%)'}} />
@@ -29,7 +83,7 @@ const Landing = () => {
                 </div>
 
                 <div className='nav-right'>
-                    <div className='log-sgn-btn'>Login / Signup</div>
+                    {user ? <Link to='/app' className='log-sgn-btn'>Chat</Link> : <div className='log-sgn-btn' onClick={popUpHook}>Login / Signup</div>}
                 </div>
             </Navigation>
 
@@ -84,10 +138,77 @@ const Landing = () => {
                     </div>
                 </div>
             </Motivation>
+
+
+            {popup && 
+                <>
+                <BackgroundFader />
+                <ModalPopup>
+                    <h3>Continue with </h3>
+                    <div style={{display: 'flex', padding: 20}}>
+                    <div className='bar' onClick={signInWithGoogle}><Google className='icon' />Google</div>
+                    </div>
+
+                    <CloseOutline className='icon-close' onClick={popUpHook} />
+                </ModalPopup>
+                </>
+            }
             
         </Wrapper>
     )
 }
+
+const ModalPopup = styled.div`
+position: absolute;
+color: white;
+background: var(--grey);
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+z-index: 100;
+width: 80%;
+max-width: 500px;
+text-align: center;
+
+.bar {
+  width: 100%;
+  transition: .3s ease-out;
+  background: transparent;
+  cursor: pointer;
+  padding: 10px;
+
+  :hover {
+    background: var(--light-grey);
+  }
+}
+
+.icon-close {
+  width: 24px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+}
+
+.icon {
+  width: 24px;
+  margin-right: 10px;
+}
+
+h3 {
+  padding: 20px;
+}
+`
+
+const BackgroundFader = styled.div`
+position: absolute;
+z-index: 90;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: #1b1b1b80;
+`
 
 const Motivation = styled.div`
 margin: 60px 0 0 0;
@@ -106,6 +227,7 @@ text-align: center;
         position: relative;
         padding: 0 20px 20px 20px;
         margin-bottom: 30px;
+        user-select: none;
 
         a {
             color: var(--dark-green);
@@ -260,6 +382,10 @@ padding: 20px 0;
 }
 
 .nav-right {
+
+a {
+    text-decoration: none;
+}
 
 .log-sgn-btn {
     color: white;

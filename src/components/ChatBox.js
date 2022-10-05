@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
 //icons
@@ -9,32 +9,98 @@ import { Send } from '@styled-icons/boxicons-solid/Send'
 import { FileImage } from '@styled-icons/boxicons-solid/FileImage'
 
 //redux
-import { openChatInfo, selectChatInfo } from '../app/appSlice'
+import { openChatInfo, selectChatInfo, selectedChat, selectUser } from '../app/appSlice'
 import { useDispatch, useSelector } from 'react-redux'
 
-import { motion } from 'framer-motion/dist/framer-motion'
+//firestore
+import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc } from "firebase/firestore"
+import { db } from '../app/firebase'
+import moment from 'moment'
 
 const ChatBox = () => {
 
   const dispatch = useDispatch();
   const chatInfoContainerState = useSelector(selectChatInfo);
+  const chatInfo = useSelector(selectedChat);
+  const user = useSelector(selectUser);
+
+  //chat message input
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+
+
+  const sendMessage = async () => {
+    //for groups
+    if(message?.length > 0 && chatInfo?.type === 'group'){
+      // Add a new document with a generated id.
+      await addDoc(collection(db, 'groupChats', chatInfo?.uid, 'messages'), {
+        displayName: user?.displayName,
+        uid: user?.uid,
+        userImage: user?.photoURL,
+        message: message,
+        messageType: 'text',
+        timestamp: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, "groupChats", chatInfo?.uid), {lastMessage: message, timestamp: serverTimestamp()});
+
+      setMessage('');
+    }
+  }
+
+  const getMessages = async () => {
+    if(chatInfo?.type === 'group'){
+      const unsubscribe = onSnapshot(query(collection(db, 'groupChats', chatInfo?.uid, 'messages'), orderBy('timestamp', 'asc')), (snapshot) => {
+        setMessages(snapshot.docs);
+      });
+
+      return unsubscribe; 
+    }
+  }
+
+  //load messages
+  useEffect(() => {
+    getMessages();
+
+    //eslint-disable-next-line
+  }, [chatInfo])
+
+  //send message when enter is pressed too
+  useEffect(() => {
+    const keyDownHandler = event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    };
+
+    document.addEventListener('keydown', keyDownHandler);
+
+    return () => {
+      document.removeEventListener('keydown', keyDownHandler);
+    };
+
+    //eslint-disable-next-line
+  }, []);
 
   //scroll down automatically.
   useEffect(() => {
     let chatContent = document.getElementById('chat-content');
-    chatContent.scrollTop = chatContent.scrollHeight;
-  }, [])
+    chatContent.scrollTop = chatContent.scrollHeight + 100;
+  }, [chatInfo, messages])
 
   return (
     <Wrapper style={{width: chatInfoContainerState ? '52%' : '72%'}}>
       <ChatInfo>
         <div className='chat-info'> 
           <div style={{marginRight: 10}}>
-            <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' />
+            {chatInfo?.type === 'group' && <img src={chatInfo?.groupImage} alt='' />}
+            
           </div>
           <div>
-            <p className='name'>ansisarthurdev hub</p>
-            <p className='members'>12 members, 5 online</p>
+            {chatInfo?.type === 'group' && <p className='name'>{chatInfo?.name}</p>}
+            
+            <p className='members'>{chatInfo?.participants?.length} members</p>
           </div>
         </div>
 
@@ -46,67 +112,7 @@ const ChatBox = () => {
       </ChatInfo>
       
       <ChatContent id='chat-content'>
-        <Message className='received'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
-          <div className='message-content'>
-            <div className='message-info'>
-              <h3 className='sender'>ansisarthurdev</h3>
-              <p className='time-sent'>02:21</p>
-            </div>
-
-            <p className='message'>I should go to sleep...</p>
-          </div>
-        </Message>
-
-        <Message className='sent'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
-          <div className='message-content'>
-            <div className='message-info'>
-              <h3 className='sender'>You</h3>
-              <p className='time-sent'>02:21</p>
-            </div>
-
-            <p className='message'>I should go to sleep...</p>
-          </div>
-        </Message>
-
-        <Message className='sent'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
-          <div className='message-content'>
-            <div className='message-info'>
-              <h3 className='sender'>You</h3>
-              <p className='time-sent'>02:21</p>
-            </div>
-
-            <p className='message'>I should go to sleep...</p>
-          </div>
-        </Message>
-
-        <Message className='received'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
-          <div className='message-content'>
-            <div className='message-info'>
-              <h3 className='sender'>ansisarthurdev</h3>
-              <p className='time-sent'>02:21</p>
-            </div>
-
-            <p className='message'>I should go to sleep...</p>
-          </div>
-        </Message>
-
-        <Message className='sent'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
-          <div className='message-content'>
-            <div className='message-info'>
-              <h3 className='sender'>You</h3>
-              <p className='time-sent'>02:21</p>
-            </div>
-
-            <p className='message'>Chat I guess is done, sleep...</p>
-          </div>
-        </Message>
-
-        <Message className='sent'>
+        {/*<Message className='sent'>
           <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
           <div className='message-content'>
             <div className='message-info'>
@@ -140,33 +146,30 @@ const ChatBox = () => {
 
             <img className='message-image' src='https://images.unsplash.com/photo-1657299143333-4a56a5519651?ixlib=rb-1.2.1&ixid=MnwxMjA3fDF8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=871&q=80' alt=''/>
           </div>
-        </Message>
+        </Message>*/}
 
-        <motion.div
-          initial={{ opacity: 0, duration: 1, delay: 2 }}
-          whileInView={{ opacity: 1 }}
-        >
-        <Message className='received'>
-          <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt='' className='message-avatar' />
+        {messages?.map(message => (
+        <Message className={message?.data().uid === user?.uid ? 'sent' : 'received'}>
+          <img src={message?.data().userImage} alt='' className='message-avatar' />
           <div className='message-content'>
             <div className='message-info'>
-              <h3 className='sender'>ansisarthurdev</h3>
-              <p className='time-sent'>02:21</p>
+              <h3 className='sender'>{message?.data().uid === user?.uid ? 'You' : message?.data().displayName}</h3>
+              <p className='time-sent'>{moment(new Date(message?.data().timestamp?.toMillis())).fromNow()}</p>
             </div>
 
-            <img className='message-image' src='https://images.unsplash.com/photo-1664553118375-8dcc9eda394b?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=580&q=80' alt=''/>
+            <p className={message?.data().uid === user?.uid ? 'message sent-message' : 'message received-message'}>{message?.data().message}</p>
           </div>
         </Message>
-        </motion.div>
+        ))}
       </ChatContent>
 
       <ChatMessage>
         <div className='input-box'>
-          <input type='text' placeholder='Your message...'/>
+          <input type='text' placeholder='Your message...' value={message} onChange={e => setMessage(e.target.value)}/>
         </div>
         
         <div className='icons'>
-          <Send className='icon' />
+          <Send className='icon' onClick={() => sendMessage()}/>
           <FileImage className='icon' />
         </div>
       </ChatMessage>
@@ -178,7 +181,7 @@ const Message = styled.div`
 display: flex;
 padding-top: 10px;
 max-width: 80%;
-margin-bottom: 20px;
+margin-bottom: 40px;
 
 :nth-last-child(1){
   margin-bottom: 30vh;
@@ -241,7 +244,6 @@ img {
 `
 
 const ChatContent = styled.div`
-border-left: 1px solid var(--light-grey);
 border-right: 1px solid var(--light-grey);
 padding: 0px 20px;
 display: flex;
@@ -249,7 +251,7 @@ flex-direction: column;
 height: 100%;
 position: absolute;
 overflow-y: scroll;
-width: calc(100% - 42px);
+width: calc(100% - 41px);
 
 ::-webkit-scrollbar {
   display: none;
@@ -260,6 +262,9 @@ width: calc(100% - 42px);
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
     border-top-right-radius: 10px;  
+    left: 60px;
+    display: inline-block;
+    max-width: 80%;
   }
 }
 
@@ -286,6 +291,10 @@ width: calc(100% - 42px);
     border-top-left-radius: 10px;
     background: var(--green);
     color: white;
+    display: inline-block;
+    position: absolute;
+    right: 60px;
+    max-width: 80%;
   }
 }
 `
@@ -304,6 +313,7 @@ border-right: 1px solid var(--light-grey);
   position: absolute;
   right: 40px;
   top: 32px;  
+  margin-right: 2%;
 
   .icon {
     width: 18px;
