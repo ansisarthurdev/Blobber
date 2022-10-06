@@ -3,6 +3,7 @@ import React, { useEffect } from 'react'
 //pages
 import ChatApp from './pages/ChatApp'
 import Landing from './pages/Landing'
+import Invite from './pages/Invite'
 
 //router
 import {
@@ -41,6 +42,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/app" element={<ChatApp />} />
+          <Route path="/invite/:id" element={<Invite />} /> 
         </Routes>
       </BrowserRouter>
   )

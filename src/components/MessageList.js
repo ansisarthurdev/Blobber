@@ -11,7 +11,7 @@ import { selectUser, selectUserData, setSelectedChat } from '../app/appSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 //firebase
-import { collection, addDoc, doc, updateDoc, arrayUnion, serverTimestamp, query, where, getDocs } from "firebase/firestore"
+import { collection, addDoc, doc, updateDoc, arrayUnion, serverTimestamp, query, where, onSnapshot } from "firebase/firestore"
 import { db } from '../app/firebase'
 import moment from 'moment'
 
@@ -40,7 +40,7 @@ const MessageList = () => {
         name: groupChatName,
         participants: [user?.uid],
         groupImage: 'https://previews.123rf.com/images/blasko/blasko1508/blasko150800096/43646532-green-ribbon-letter-b-symbol-logo-design.jpg',
-        admins: [user?.uid],
+        admins: user?.uid,
         timestamp: serverTimestamp(),
         type: 'group'
       });
@@ -62,24 +62,12 @@ const MessageList = () => {
   const getChats = async () => {
     //get group chats
     if(userData?.groupChats){
-      setGroupChats([]);
-      /*const groupChats = Object.values(userData?.groupChats);
-
-      for(let i=0; i < groupChats.length; i++){
-        const unsub = onSnapshot(doc(db, 'groupChats', groupChats[i]), (doc) => {
-          setGroupChats(prev => [...prev, doc.data()])
-        });
-
-        if(i === groupChats?.length){
-          return unsub;
-        }
-      }*/
-
-      const q = query(collection(db, 'groupChats'), where("participants", "array-contains", user?.uid));
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach((doc) => {
-        setGroupChats(prev => [...prev, doc.data()]);
+      //setGroupChats([]);
+      const unsubscribe = onSnapshot(query(collection(db, 'groupChats'), where("participants", "array-contains", user?.uid)), (snapshot) => {
+        setGroupChats(snapshot.docs)
       });
+
+      return unsubscribe; 
     }
   }
 
@@ -91,9 +79,8 @@ const MessageList = () => {
     if(userData){
       getChats();
     }
-
     //eslint-disable-next-line
-  }, [userData, ])
+  }, [userData])
 
   return (
     <Wrapper>
@@ -144,18 +131,18 @@ const MessageList = () => {
         <Messages>
           <div className='messages-container'>
           {groupChatsState?.map(group => (
-            <Message key={group?.uid} onClick={() => openChat(group)}>
+            <Message key={group?.data().uid} onClick={() => openChat(group.data())}>
             <div className='left'>
-              <img src={group?.groupImage} alt=''/>
+              <img src={group?.data().groupImage} alt=''/>
             </div>
             
             <div className='right'>
               <div className='msg-top'>
-                <h3 className='msg-user'>{group?.name}</h3>
-                {group?.lastMessage && <p className='msg-time'>{moment(new Date(group?.timestamp?.toMillis())).format("h:mm a")}</p>}
+                <h3 className='msg-user'>{group?.data().name}</h3>
+                {group?.data().timestamp && <p className='msg-time'>{moment(new Date(group?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
               </div>
               <div className='msg-bottom'>
-                {group?.lastMessage ? <p className='msg-preview'>{group?.lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
+                {group?.data().lastMessage ? <p className='msg-preview'>{group?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
               </div>
             </div>
             </Message> 
@@ -347,7 +334,7 @@ background: #1b1b1b80;
 const Message = styled.div`
 display: flex;
 cursor: pointer;
-padding: 10px 20px 5px;
+padding: 10px 16px 5px;
 
 :hover {
   background: var(--dark-grey);

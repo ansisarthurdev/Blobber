@@ -61,7 +61,6 @@ const ChatBox = () => {
   //load messages
   useEffect(() => {
     getMessages();
-
     //eslint-disable-next-line
   }, [chatInfo])
 
@@ -149,7 +148,7 @@ const ChatBox = () => {
         </Message>*/}
 
         {messages?.map(message => (
-        <Message className={message?.data().uid === user?.uid ? 'sent' : 'received'}>
+        <Message key={message?.uid} className={message?.data().uid === user?.uid ? 'sent' : 'received'}>
           <img src={message?.data().userImage} alt='' className='message-avatar' />
           <div className='message-content'>
             <div className='message-info'>
@@ -181,7 +180,7 @@ const Message = styled.div`
 display: flex;
 padding-top: 10px;
 max-width: 80%;
-margin-bottom: 40px;
+margin-bottom: 10px;
 
 :nth-last-child(1){
   margin-bottom: 30vh;
@@ -258,6 +257,12 @@ width: calc(100% - 41px);
 }
 
 .received {
+  .message-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .message {
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
@@ -271,6 +276,12 @@ width: calc(100% - 41px);
 .sent {
   align-self: self-end;
   flex-direction: row-reverse;
+
+  .message-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
 
   .message-info {
     flex-direction: row-reverse;
@@ -291,10 +302,9 @@ width: calc(100% - 41px);
     border-top-left-radius: 10px;
     background: var(--green);
     color: white;
-    display: inline-block;
-    position: absolute;
-    right: 60px;
     max-width: 80%;
+    display: inline-block;
+    right: -38px;
   }
 }
 `

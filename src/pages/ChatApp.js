@@ -74,6 +74,7 @@ overflow-y: hidden;
   justify-content: center;
   border-right: 1px solid var(--light-grey);
   user-select: none;
+  overflow: hidden;
 
   p {
     color: white;
