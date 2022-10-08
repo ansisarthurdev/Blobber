@@ -8,6 +8,7 @@ import NavigationBar from '../components/NavigationBar'
 import MessageList from '../components/MessageList'
 import ChatBox from '../components/ChatBox'
 import ChatInfo from '../components/ChatInfo'
+import Loader from '../components/Loader'
 
 //redux
 import { selectUser, selectedChat, setUserData } from '../app/appSlice'
@@ -47,16 +48,20 @@ const ChatApp = () => {
   }, [user, navigate])
 
   return (
-    <Wrapper>
-        <NavigationBar />
-        <MessageList />
-        {chat ? <> <ChatBox /> <ChatInfo /> </> : <>
-          <div className='no-chat-opened'>
-            <Lottie className='chat-animation' animationData={nomessages} loop={true} />
-            <p>No conversation selected</p>
-          </div>
-        </>}
-    </Wrapper>
+    <div className='chatApp'>
+      {!user ? <Loader /> : <>
+        <Wrapper>
+            <NavigationBar />
+            <MessageList />
+            {chat ? <> <ChatBox /> <ChatInfo /> </> : <>
+              <div className='no-chat-opened'>
+                <Lottie className='chat-animation' animationData={nomessages} loop={true} />
+                <p>No conversation selected</p>
+              </div>
+            </>}
+        </Wrapper>
+      </>}
+    </div>
   )
 }
 

@@ -78,7 +78,7 @@ const Invite = () => {
         <h3>You've been invited to join {inviteInfo?.name} group!</h3>
         <img src={inviteInfo?.groupImage} alt='' />
         <div className='modal-content'>
-            <p className='description' style={{userSelect: 'none'}}>{inviteInfo?.description}</p>
+            <p className='description' style={{userSelect: 'none'}}>{inviteInfo?.description ? inviteInfo?.description : 'No description available.'}</p>
             <p className='members'>{inviteInfo?.participants?.length} Members</p>
             {user === null ? <Link to='/'><div className='button'>You need to sign in first!</div></Link> : userInGroup ? <Link to='/app'><div className='button'>You are already in the group. Hop in!</div></Link> : <div className='button' onClick={() => joinGroup()}>Join</div>}
         </div>

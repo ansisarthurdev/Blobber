@@ -58,22 +58,25 @@ const ChatInfo = () => {
     //set description. we are doing this way, because on chat creation description is not set.
     setDescription(chat?.description);
 
-    chat && getMembers();
+    chat?.type === 'group' && getMembers();
     //eslint-disable-next-line
   }, [chat])
 
   return (
     <Wrapper style={{width: chatInfoContainerState ? '20%' : 0, display: chatInfoContainerState ? 'block' : 'none'}}>
         <ChatInformation>
-          <h3>{chat?.name}</h3>
+          <h3>{chat?.type === 'group' ? chat?.name : 'Chat'}</h3>
           <CloseSquareOutline onClick={() => dispatch(openChatInfo(false))} className='icon' />
         </ChatInformation>
 
+        {chat?.type === 'group' && <>
         <Category><p><TextDescription className='icon' />DESCRIPTION</p></Category>
         <p className='description'>{description ? description : 'No description available.'}</p>
+        </>}
+        
         {chat?.admins === userData?.uid && <div className='button' onClick={() => openDescriptionModal(true)}>Edit Group</div>}
 
-        <Category><p><Users className='icon' /> Members ({chat?.participants?.length})</p> <a href='/'>Show All</a></Category>
+        {chat?.type==='group' && <><Category><p><Users className='icon' /> Members ({chat?.participants?.length})</p> <div className='more-btn'>Show All</div></Category>
 
         <MembersList>
           {members?.map(member => (
@@ -92,8 +95,9 @@ const ChatInfo = () => {
         </MembersList>
 
         <div className='button' onClick={() => { openInviteUserModal(true);}}>Invite</div>
+        </>}
 
-        <Category><p><FileMedia className='icon' /> Media (6)</p> <a href='/'>Show All</a></Category>
+        <Category><p><FileMedia className='icon' /> Media (6)</p> <div className='more-btn'>Show All</div></Category>
 
         <MediaList>
           <p className='images-left'>10+</p>
@@ -323,10 +327,11 @@ justify-content: space-between;
 align-items: center;
 margin: 0 0 10px 0;
 
-a {
+.more-btn {
   color: var(--dark-green);
   font-size: .6rem;
   transition: .3s ease-out;
+  cursor: pointer;
 
   :hover {
     opacity: .6;

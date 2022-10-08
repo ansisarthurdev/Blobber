@@ -27,6 +27,7 @@ const ChatBox = () => {
   //chat message input
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [secondUser, setSecondUser] = useState([]);
 
 
   const sendMessage = async () => {
@@ -45,22 +46,44 @@ const ChatBox = () => {
       await updateDoc(doc(db, "groupChats", chatInfo?.uid), {lastMessage: message, timestamp: serverTimestamp()});
 
       setMessage('');
+    } else if(message?.length > 0 && chatInfo?.type === 'private'){
+      // Add a new document with a generated id.
+      await addDoc(collection(db, 'privateChats', chatInfo?.uid, 'messages'), {
+        displayName: user?.displayName,
+        uid: user?.uid,
+        userImage: user?.photoURL,
+        message: message,
+        messageType: 'text',
+        timestamp: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, "privateChats", chatInfo?.uid), {lastMessage: `${user?.displayName}: ${message}`, timestamp: serverTimestamp()});
+
+      setMessage('');
     }
   }
 
   const getMessages = async () => {
     if(chatInfo?.type === 'group'){
-      const unsubscribe = onSnapshot(query(collection(db, 'groupChats', chatInfo?.uid, 'messages'), orderBy('timestamp', 'asc')), (snapshot) => {
+      onSnapshot(query(collection(db, 'groupChats', chatInfo?.uid, 'messages'), orderBy('timestamp', 'asc')), (snapshot) => {
         setMessages(snapshot.docs);
-      });
-
-      return unsubscribe; 
+    })} else if(chatInfo?.type === 'private'){
+      onSnapshot(query(collection(db, 'privateChats', chatInfo?.uid, 'messages'), orderBy('timestamp', 'asc')), (snapshot) => {
+      setMessages(snapshot.docs);
+    });
     }
   }
 
   //load messages
   useEffect(() => {
-    getMessages();
+    if(chatInfo){
+      getMessages();
+
+      if(chatInfo?.type === 'private'){
+        const filteredSecondUser = JSON.parse(chatInfo?.participantsData).filter(filterUser => filterUser?.uid !== user?.uid);
+        setSecondUser(filteredSecondUser);
+      }
+    }
     //eslint-disable-next-line
   }, [chatInfo])
 
@@ -93,13 +116,13 @@ const ChatBox = () => {
       <ChatInfo>
         <div className='chat-info'> 
           <div style={{marginRight: 10}}>
-            {chatInfo?.type === 'group' && <img src={chatInfo?.groupImage} alt='' />}
+            {chatInfo?.type === 'group' ? <img src={chatInfo?.groupImage} alt='' /> : <img src={secondUser[0]?.photoURL} alt='' />}
             
           </div>
           <div>
-            {chatInfo?.type === 'group' && <p className='name'>{chatInfo?.name}</p>}
+            {chatInfo?.type === 'group' ? <p className='name'>{chatInfo?.name}</p> : <p className='name'>{secondUser[0]?.displayName}</p>}
             
-            <p className='members'>{chatInfo?.participants?.length} members</p>
+            {chatInfo?.type === 'group' ? <p className='members'>{chatInfo?.participants?.length} members</p> : <p className='private'>Private chat</p>}
           </div>
         </div>
 
@@ -312,8 +335,10 @@ width: calc(100% - 41px);
 const ChatMessage = styled.div`
 background: var(--grey);
 position: absolute;
+width: calc(100% - 3px);
 bottom: 0;
-width: calc(100% - 2px);
+
+
 display: flex;
 justify-content: center;
 border-left: 1px solid var(--light-grey);
@@ -374,8 +399,13 @@ display: flex;
 align-items: center;
 
 .members {
-font-size: .7rem;
+font-size: .5rem;
 color: gray;
+}
+
+.private {
+font-size: .5rem;
+color: var(--green);
 }
 }
 

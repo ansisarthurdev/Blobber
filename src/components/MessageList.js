@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import styled from 'styled-components'
+import { useDebounce } from 'use-debounce';
 
 //icons
 import { NewMessage } from '@styled-icons/entypo/NewMessage'
@@ -11,7 +12,7 @@ import { selectUser, selectUserData, setSelectedChat } from '../app/appSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 //firebase
-import { collection, addDoc, doc, updateDoc, arrayUnion, serverTimestamp, query, where, onSnapshot } from "firebase/firestore"
+import { collection, addDoc, doc, updateDoc, arrayUnion, serverTimestamp, query, where, onSnapshot, getDocs } from "firebase/firestore"
 import { db } from '../app/firebase'
 import moment from 'moment'
 
@@ -24,17 +25,26 @@ const MessageList = () => {
 
   const [newMsg, openNewMsg] = useState(false); //new conversation modal
   const [chatType, setChatType] = useState(null); //chat type for new conversation
-  const [groupChatName, setGroupChatName] = useState(); //group chat name
+  const [groupChatName, setGroupChatName] = useState(''); //group chat name
   const [groupChatsState, setGroupChats] = useState([]); //group chats from firestore
+  const [creationState, setCreationState] = useState(false); //create button state
+  const [searchTxt, setSearchTxt] = useState(''); //search text state
+  const [searchTxtValue] = useDebounce(searchTxt, 1000); //search text debounced
+  const [searchResult, setSearchResult] = useState(null); //search result state
+  const [privateChatsSate, setPrivateChats] = useState([]); //private chats from firestore
+  const [chatsToDisplay, setChatsToDisplay] = useState(); //chats to display if user has both categories
 
   const closeModalMessage = () => {
     openNewMsg(false);
     setChatType(null);
     setGroupChatName();
+    setSearchResult(null); 
+    setSearchTxt('')
   }
 
   const createGroupChat = async () => {
     if(groupChatName?.length > 4){
+      setCreationState(true);
       // Add a new document with a generated id.
       const docRef = await addDoc(collection(db, "groupChats"), {
         name: groupChatName,
@@ -56,24 +66,84 @@ const MessageList = () => {
       });
 
       closeModalMessage();
+      setCreationState(false);
     }
+  }
+
+  const createPrivateChat = async () => {
+    setCreationState(true);
+      // Add a new document with a generated id.
+      const docRef = await addDoc(collection(db, "privateChats"), {
+        participants: [user?.uid, searchResult?.uid],
+        participantsData: JSON.stringify([
+          {uid: user?.uid, displayName: user?.displayName, photoURL: user?.photoURL},
+          {uid: searchResult?.uid, displayName: searchResult?.userDisplayName, photoURL: searchResult?.userImage}
+        ]),
+        timestamp: serverTimestamp(),
+        type: 'private',
+        lastMessage: 'created private chat',
+      });
+      
+      const privateRef = doc(db, 'privateChats', docRef.id);
+      await updateDoc(privateRef, {
+        uid: docRef.id
+      })
+
+      //add private chat to first user
+      const userRef1 = doc(db, 'users', user?.uid);
+      await updateDoc(userRef1, {
+        privateChats: arrayUnion(docRef.id)
+      });
+
+      //add private chat to second user
+      const userRef2 = doc(db, 'users', searchResult?.uid);
+      await updateDoc(userRef2, {
+        privateChats: arrayUnion(docRef.id)
+      })
+
+      closeModalMessage();
+      setCreationState(false);
   }
 
   const getChats = async () => {
     //get group chats
     if(userData?.groupChats){
       //setGroupChats([]);
-      const unsubscribe = onSnapshot(query(collection(db, 'groupChats'), where("participants", "array-contains", user?.uid)), (snapshot) => {
+      setChatsToDisplay('group');
+      onSnapshot(query(collection(db, 'groupChats'), where("participants", "array-contains", user?.uid)), (snapshot) => {
         setGroupChats(snapshot.docs)
       });
-
-      return unsubscribe; 
+    } 
+    
+    if(userData?.privateChats){
+      setChatsToDisplay('private');
+      onSnapshot(query(collection(db, 'privateChats'), where("participants", "array-contains", user?.uid)), (snapshot) => {
+        setPrivateChats(snapshot.docs)
+      });
     }
   }
 
-  const openChat = (group) => {
-    dispatch(setSelectedChat(group))
+  const searchUser = async () => {
+    if(searchTxtValue?.length !== 0){
+      if(searchTxt !== user?.displayName){
+        const q = query(collection(db, 'users'), where('userDisplayName', "==", searchTxtValue));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          setSearchResult(doc.data());
+        });
+      }
+    }
+  
   }
+
+  const openChat = (chat) => {
+    dispatch(setSelectedChat(chat))
+  }
+
+  useEffect(() => {
+    searchUser();
+    //eslint-disable-next-line
+  }, [searchTxtValue])
 
   useEffect(() => {
     if(userData){
@@ -125,10 +195,10 @@ const MessageList = () => {
 
       {/* If user has group chats but not private chats */}
       {userData?.groupChats && !userData?.privateChats && <>
-        <MessageBottom style={{height: '80%'}}>
+        <MessageBottom>
         <p style={{userSelect: 'none'}}><Chat className='icon'/> Group Messages</p>
 
-        <Messages>
+        <Messages style={{height: '80%'}}>
           <div className='messages-container'>
           {groupChatsState?.map(group => (
             <Message key={group?.data().uid} onClick={() => openChat(group.data())}>
@@ -146,7 +216,7 @@ const MessageList = () => {
               </div>
             </div>
             </Message> 
-          ))
+            ))
           }                    
           </div>
         </Messages>
@@ -183,27 +253,65 @@ const MessageList = () => {
       {/* If user has both */}
       {userData?.groupChats && userData?.privateChats && <>
         <MessageBottom>
-        <p style={{userSelect: 'none'}}><Chat className='icon'/> Private Messages</p>
+        <p style={{background: chatsToDisplay === 'private' && 'var(--green)'}} onClick={() => setChatsToDisplay('private')}><Chat className='icon'/> Private Messages</p>
+        <p style={{background: chatsToDisplay === 'group' && 'var(--green)'}} onClick={() => setChatsToDisplay('group')}><Chat className='icon'/> Group Messages</p>
 
-        <Messages>
+        {chatsToDisplay === 'group' && 
+          <Messages>
           <div className='messages-container'>
-          <Message>
+          {groupChatsState?.map(group => (
+            <Message key={group?.data().uid} onClick={() => openChat(group.data())}>
             <div className='left'>
-              <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt=''/>
+              <img src={group?.data().groupImage} alt=''/>
             </div>
             
             <div className='right'>
               <div className='msg-top'>
-                <h3 className='msg-user'>ansisarthurfsdlkjfslkdjfskljdfds</h3>
-                <p className='msg-time'>21:39</p>
+                <h3 className='msg-user'>{group?.data().name}</h3>
+                {group?.data().timestamp && <p className='msg-time'>{moment(new Date(group?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
               </div>
               <div className='msg-bottom'>
-                <p className='msg-preview'>fdsssssssfasdfdfsdfsdfsdfsdfsfsdfds</p>
+                {group?.data().lastMessage ? <p className='msg-preview'>{group?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
               </div>
             </div>
-          </Message>                      
+            </Message> 
+            ))
+          }                    
           </div>
         </Messages>
+        }
+
+        {chatsToDisplay === 'private' && 
+          <Messages>
+          <div className='messages-container'>
+          {privateChatsSate?.map(chat => {
+
+            const participantsData = chat?.data().participantsData;
+            const secondUser = JSON.parse(participantsData).filter(secondUser => secondUser.uid !== user.uid);
+
+            return(
+              <Message key={chat?.data().uid} onClick={() => openChat(chat.data())}>
+              <div className='left'>
+                <img src={secondUser[0]?.photoURL} alt=''/>
+              </div>
+              
+              <div className='right'>
+                <div className='msg-top'>
+                  <h3 className='msg-user'>{secondUser[0]?.displayName}</h3>
+                  {chat?.data().timestamp && <p className='msg-time'>{moment(new Date(chat?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
+                </div>
+                <div className='msg-bottom'>
+                  {chat?.data().lastMessage ? <p className='msg-preview'>{chat?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
+                </div>
+              </div>
+              </Message> 
+            )
+          })
+          }                    
+          </div>
+        </Messages>
+        }
+
         </MessageBottom>
       </>}
 
@@ -220,15 +328,27 @@ const MessageList = () => {
             {chatType !== null && <>
             <div className='chat-creation'>
               {chatType === 'group' && <p>Group name should be at least 5 characters.</p>}
+              
               <div className='input-container'>
                 {chatType === 'group' && <input type='text' placeholder='Type your group name' name={groupChatName} onChange={e => setGroupChatName(e.target.value)}/>}
-                {chatType === 'private' && <input type='text' placeholder='Search user' />}
+                {chatType === 'private' && <input type='text' placeholder='Search user' value={searchTxt} onChange={e => setSearchTxt(e.target.value)} />}
               </div>
                 
-                {chatType === 'group' && <div className='creation-button' onClick={() => createGroupChat()}>Create</div>}
+              {chatType === 'private' && searchResult && <div className='search-result'>
+                <img src={searchResult?.userImage} alt='' />
+                <p>{searchResult?.userDisplayName}</p>
+              </div>}
 
-            </div>
-            </>}
+              {chatType === 'group' && !creationState ? 
+              <div className='creation-button' style={{display: (chatType === 'private' || groupChatName?.length < 5) && 'none'}} onClick={() => createGroupChat()}>Create</div> : 
+              <div className='creation-button' style={{background: 'var(--light-grey)', display: chatType === 'private' && 'none'}}>Creating...</div>}
+              
+              {chatType === 'private' && !creationState ? 
+              <div className='creation-button' style={{display: (chatType === 'group' || !searchResult) && 'none'}} onClick={() => createPrivateChat()}>Create</div> : 
+              <div className='creation-button' style={{background: 'var(--light-grey)', display: (chatType === 'group' || !searchResult) && 'none'}}>Creating...</div>}
+
+              </div>
+              </>}
 
             <CloseOutline className='icon-close' onClick={() => closeModalMessage()}/>
           </ModalMessage>
@@ -250,6 +370,21 @@ width: 80%;
 max-width: 500px;
 text-align: center;
 padding: 20px;
+
+.search-result {
+  display: flex;
+  margin: 20px 0;;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+
+  img {
+    width: 50px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-right: 20px;
+  }
+}
 
 .icon-close {
   width: 24px;
@@ -351,8 +486,9 @@ padding: 10px 16px 5px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 180px;
+      width: 183px;
       color: #c3c3c5;
+      display: block;
     }
   }
 
@@ -368,7 +504,7 @@ padding: 10px 16px 5px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 140px;
+      width: 136px;
       color: white;
     }
 
@@ -388,12 +524,10 @@ img {
 `
 
 const Messages = styled.div`
-height: 70%;
-position: absolute;
+position: relative;
 
 .messages-container {
 overflow-y: scroll;
-height: 100%;
 
 ::-webkit-scrollbar {
   display: none;
@@ -407,13 +541,20 @@ height: 100%;
 `
 
 const MessageBottom = styled.div`
-height: 80%;
+height: 82vh;
+overflow-y: scroll;
+
+::-webkit-scrollbar {
+  display: none;
+}
 
 p {
   color: white;
   display: flex;
   font-size: .7rem;
-  padding: 20px;
+  padding: 10px 20px;
+  cursor: pointer;
+  margin-bottom: 5px;
 
   .icon {margin-right: 10px;}
 }
@@ -424,7 +565,7 @@ p {
 `
 
 const MessageTop = styled.div`
-padding: 20px;
+padding: 15px 20px;
 display: flex;
 flex-direction: column;
 justify-content: center;
@@ -433,7 +574,7 @@ justify-content: center;
 display: flex;
 justify-content: space-between;
 align-items: center;
-margin-bottom: 30px;
+margin-bottom: 10px;
 
 .icon {
   transition: .3s ease-out;
