@@ -452,6 +452,7 @@ h3 {
 const Wrapper = styled.div`
 background: var(--grey);
 transition: .3s ease-out;
+min-width: 250px;
 
 .description {
   padding: 0 20px;

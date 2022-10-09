@@ -258,7 +258,7 @@ margin-bottom: 10px;
 img {
   width: 32px;
   height: 32px;
-  object-fit: contain;
+  object-fit: cover;
   border-radius: 50%;
   margin-right: 10px;
   user-select: none;
@@ -438,6 +438,7 @@ const Wrapper = styled.div`
 background: var(--dark-grey);
 position: relative;
 transition: .3s ease-out;
+min-width: 500px;
 `
 
 export default ChatBox
