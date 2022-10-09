@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import styled from 'styled-components'
 
 //icons
@@ -10,11 +10,15 @@ import { Chat } from '@styled-icons/bootstrap/Chat'
 import { FileMedia } from '@styled-icons/octicons/FileMedia'
 import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 
-//redux
+//redux - firebase
 import { useDispatch, useSelector } from 'react-redux'
-import { openChatInfo, selectChatInfo, selectedChat, selectUserData } from '../app/appSlice'
+import { openChatInfo, selectChatInfo, selectedChat, selectUserData, setSelectedChat } from '../app/appSlice'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
-import { db } from '../app/firebase'
+import { ref, getDownloadURL, uploadString } from '@firebase/storage'
+import { db, storage } from '../app/firebase'
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ChatInfo = () => {
 
@@ -30,13 +34,57 @@ const ChatInfo = () => {
 
   const [inviteUserModal, openInviteUserModal] = useState(false);
 
-  const updateGroup = async () => {
-    const docRef = doc(db, 'groupChats', chat?.uid);
-    await updateDoc(docRef, {
-      description: description
-    });
+  const filePickerRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-    openDescriptionModal(false);
+  const chooseImage = (e) => {
+    const reader = new FileReader();
+    if(e.target.files[0]){
+      reader.readAsDataURL(e.target.files[0])
+    }
+
+    reader.onload = (readerEvent) => {
+      setSelectedFile(readerEvent.target.result)
+    }
+  }
+
+  const updateGroup = async () => {
+      const docRef = doc(db, 'groupChats', chat?.uid);
+
+      await updateDoc(docRef, {
+        description: description
+      });
+
+      toast('✅ Description updated', {
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: 'dark',
+        autoClose: 2000
+      });
+
+      if(selectedFile !== null){
+        const notify = toast.loading("Uploading group image...", {theme: 'dark'});
+        const imageRef = ref(storage, `groupChats/${chat?.uid}/groupChatImage`);
+  
+        await uploadString(imageRef, selectedFile, 'data_url').then(async snapshot => {
+          const downloadURL = await getDownloadURL(imageRef);
+          
+          await updateDoc(docRef, {
+            groupImage: downloadURL
+          });
+
+          let chatUpdated = {...chat, groupImage: downloadURL};
+          dispatch(setSelectedChat(chatUpdated))
+
+          toast.update(notify, { render: "Group image updated!", type: "success", isLoading: false, theme: 'dark', autoClose: 3000 });
+        }).catch(error => console.log(error))
+        
+        setSelectedFile(null);
+        openDescriptionModal(false);
+      }
   }
 
   const getMembers = async () => {
@@ -56,7 +104,9 @@ const ChatInfo = () => {
 
   useEffect(() => {
     //set description. we are doing this way, because on chat creation description is not set.
-    setDescription(chat?.description);
+    if(!chat?.description){
+      setDescription(chat?.description);
+    }
 
     chat?.type === 'group' && getMembers();
     //eslint-disable-next-line
@@ -118,11 +168,14 @@ const ChatInfo = () => {
             <h3>Edit group</h3>
 
             <div className='modal-content'>
-              {chat?.type === 'group' && <img src={chat?.groupImage} alt='' />}
+              {chat?.type === 'group' && <img src={selectedFile ? selectedFile : chat?.groupImage} alt='' onClick={() => filePickerRef.current.click()} />}
+              <input type='file' ref={filePickerRef} onChange={chooseImage} hidden />
+
+              <p>Click on group image, if you want to update it.</p>
               <div className='input-container'>
                 <input type='text' placeholder={description ? description : `${chat?.name} description`} value={description} onChange={e => setDescription(e.target.value)} />
               </div>
-                <div className='creation-button' onClick={() => updateGroup()}>Edit</div>
+                <div className='creation-button' onClick={() => updateGroup()}>Save</div>
             </div>
 
             <CloseOutline className='icon-close' onClick={() => openDescriptionModal(false)}/>
@@ -146,6 +199,15 @@ const ChatInfo = () => {
           </ModalDescription>
           </>
           }
+
+          <ToastContainer
+          position="bottom-center"
+          hideProgressBar={false}
+          newestOnTop={false}
+          autoClose={3000}
+          closeToast
+          draggable
+          />
     </Wrapper>
   )
 }
@@ -170,11 +232,20 @@ padding: 20px;
 
 img {
   width: 50px;
+  height: 50px;
   border-radius: 50%;
   position: absolute;
   top: -20px;
   left: 50%;  
   transform: translateX(-50%);
+  transition: .3s ease-out;
+  cursor: pointer;
+  border: 3px solid transparent;
+
+  :hover {
+    transform: translateX(-50%) scale(1.2);
+    border: 3px solid var(--green);
+  }
 }
 
 .icon-close {

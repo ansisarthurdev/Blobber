@@ -429,7 +429,7 @@ color: var(--green);
 img {
   width: 38px;
   height: 38px;
-  object-fit: contain;
+  object-fit: cover;
   border-radius: 50%;
 }
 `

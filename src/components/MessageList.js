@@ -128,9 +128,11 @@ const MessageList = () => {
       if(searchTxt !== user?.displayName){
         const q = query(collection(db, 'users'), where('userDisplayName', "==", searchTxtValue));
         const querySnapshot = await getDocs(q);
+
         querySnapshot.forEach((doc) => {
           setSearchResult(doc.data());
         });
+        
       }
     }
   
@@ -225,29 +227,34 @@ const MessageList = () => {
 
       {/* If user has private chats but not group messages */}
       {!userData?.groupChats && userData?.privateChats && <>
-        <MessageBottom>
-        <p style={{userSelect: 'none'}}><Chat className='icon'/> Private Chats</p>
-
         <Messages>
           <div className='messages-container'>
-          <Message>
-            <div className='left'>
-              <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQKpiFXNibuHIcJpUpot_YgS55ywsPHhSiEA&usqp=CAU' alt=''/>
-            </div>
-            
-            <div className='right'>
-              <div className='msg-top'>
-                <h3 className='msg-user'>ansisarthurfsdlkjfslkdjfskljdfds</h3>
-                <p className='msg-time'>21:39</p>
+          {privateChatsSate?.map(chat => {
+
+            const participantsData = chat?.data().participantsData;
+            const secondUser = JSON.parse(participantsData).filter(secondUser => secondUser.uid !== user.uid);
+
+            return(
+              <Message key={chat?.data().uid} onClick={() => openChat(chat.data())}>
+              <div className='left'>
+                <img src={secondUser[0]?.photoURL} alt=''/>
               </div>
-              <div className='msg-bottom'>
-                <p className='msg-preview'>fdsssssssfasdfdfsdfsdfsdfsdfsfsdfds</p>
+              
+              <div className='right'>
+                <div className='msg-top'>
+                  <h3 className='msg-user'>{secondUser[0]?.displayName}</h3>
+                  {chat?.data().timestamp && <p className='msg-time'>{moment(new Date(chat?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
+                </div>
+                <div className='msg-bottom'>
+                  {chat?.data().lastMessage ? <p className='msg-preview'>{chat?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
+                </div>
               </div>
-            </div>
-          </Message>                      
+              </Message> 
+            )
+          })
+          }                    
           </div>
         </Messages>
-        </MessageBottom>
       </>}
       
       {/* If user has both */}
