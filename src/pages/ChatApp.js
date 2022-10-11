@@ -9,9 +9,10 @@ import MessageList from '../components/MessageList'
 import ChatBox from '../components/ChatBox'
 import ChatInfo from '../components/ChatInfo'
 import Loader from '../components/Loader'
+import ImagePreview from '../components/ImagePreview'
 
 //redux
-import { selectUser, selectedChat, setUserData } from '../app/appSlice'
+import { selectUser, selectedChat, setUserData, selectPreview } from '../app/appSlice'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { doc, onSnapshot } from "firebase/firestore"
@@ -25,6 +26,7 @@ const ChatApp = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const chat = useSelector(selectedChat);
+  const preview = useSelector(selectPreview);
 
   useEffect(() => {
     if(user){
@@ -61,6 +63,8 @@ const ChatApp = () => {
             </>}
         </Wrapper>
       </>}
+
+      {preview && <ImagePreview />}
     </div>
   )
 }

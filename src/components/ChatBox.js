@@ -10,7 +10,7 @@ import { FileImage } from '@styled-icons/boxicons-solid/FileImage'
 import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 
 //redux
-import { openChatInfo, selectChatInfo, selectedChat, selectUser, setSelectedChat } from '../app/appSlice'
+import { openChatInfo, selectChatInfo, selectedChat, selectUser, setPreview } from '../app/appSlice'
 import { useDispatch, useSelector } from 'react-redux'
 
 //firestore
@@ -38,6 +38,8 @@ const ChatBox = () => {
   const filePickerRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  //image preview
 
   const chooseImage = (e) => {
     const reader = new FileReader();
@@ -237,7 +239,7 @@ const ChatBox = () => {
               <p className='time-sent'>{moment(new Date(message?.data().timestamp?.toMillis())).fromNow()}</p>
             </div>
 
-            {message?.data().messageType === 'image' && message?.data().messageImage && <img className='message-image' src={message?.data().messageImage} alt=''/>}
+            {message?.data().messageType === 'image' && message?.data().messageImage && <img className='message-image' src={message?.data().messageImage} alt='' onClick={() => dispatch(setPreview(message?.data().messageImage))}/>}
             {message?.data().messageType === 'text' && <p className={message?.data().uid === user?.uid ? 'message sent-message' : 'message received-message'}>{message?.data().message}</p>}
           </div>
         </Message>
@@ -328,6 +330,12 @@ margin-bottom: 10px;
   margin-left: 0;
   position: relative;
   top: 10px;
+  cursor: pointer;
+  transition: .3s ease-out;
+
+  :hover {
+    transform: scale(1.05);
+  }
 }
 
 img {
