@@ -33,6 +33,7 @@ const MessageList = () => {
   const [searchResult, setSearchResult] = useState(null); //search result state
   const [privateChatsSate, setPrivateChats] = useState([]); //private chats from firestore
   const [chatsToDisplay, setChatsToDisplay] = useState(); //chats to display if user has both categories
+  const [searchQuery, setSearchQuery] = useState('');
 
   const closeModalMessage = () => {
     openNewMsg(false);
@@ -81,7 +82,7 @@ const MessageList = () => {
         ]),
         timestamp: serverTimestamp(),
         type: 'private',
-        lastMessage: 'created private chat',
+        lastMessage: 'created private chat'
       });
       
       const privateRef = doc(db, 'privateChats', docRef.id);
@@ -106,7 +107,6 @@ const MessageList = () => {
   }
 
   const getChats = async () => {
-    //get group chats
     if(userData?.groupChats){
       //setGroupChats([]);
       setChatsToDisplay('group');
@@ -164,14 +164,14 @@ const MessageList = () => {
 
         <div className='bottom'>
           <Search className='icon' />
-          <input type='text' placeholder='Search...' />
+          <input type='text' placeholder='Search...' value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/>
         </div>
       </MessageTop>
 
       {/* for new users */}
       {!userData?.groupChats && !userData?.privateChats && <>
         <MessageBottom>
-        <p style={{userSelect: 'none'}}><Chat className='icon'/> Welcome To blobber</p>
+        <p style={{userSelect: 'none'}}><Chat className='icon'/>Start messaging</p>
 
         <Messages>
           <div className='messages-container'>
@@ -227,34 +227,38 @@ const MessageList = () => {
 
       {/* If user has private chats but not group messages */}
       {!userData?.groupChats && userData?.privateChats && <>
-        <Messages>
+        <MessageBottom>
+        <p style={{userSelect: 'none'}}><Chat className='icon'/> Private Messages</p>
+
+        <Messages style={{height: '80%'}}>
           <div className='messages-container'>
           {privateChatsSate?.map(chat => {
 
-            const participantsData = chat?.data().participantsData;
-            const secondUser = JSON.parse(participantsData).filter(secondUser => secondUser.uid !== user.uid);
+          const participantsData = chat?.data().participantsData;
+          const secondUser = JSON.parse(participantsData).filter(secondUser => secondUser.uid !== user.uid);
 
-            return(
-              <Message key={chat?.data().uid} onClick={() => openChat(chat.data())}>
-              <div className='left'>
-                <img src={secondUser[0]?.photoURL} alt=''/>
+          return(
+            <Message key={chat?.data().uid} onClick={() => openChat(chat.data())}>
+            <div className='left'>
+              <img src={secondUser[0]?.photoURL} alt=''/>
+            </div>
+            
+            <div className='right'>
+              <div className='msg-top'>
+                <h3 className='msg-user'>{secondUser[0]?.displayName}</h3>
+                {chat?.data().timestamp && <p className='msg-time'>{moment(new Date(chat?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
               </div>
-              
-              <div className='right'>
-                <div className='msg-top'>
-                  <h3 className='msg-user'>{secondUser[0]?.displayName}</h3>
-                  {chat?.data().timestamp && <p className='msg-time'>{moment(new Date(chat?.data().timestamp?.toMillis())).format("h:mm a")}</p>}
-                </div>
-                <div className='msg-bottom'>
-                  {chat?.data().lastMessage ? <p className='msg-preview'>{chat?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
-                </div>
+              <div className='msg-bottom'>
+                {chat?.data().lastMessage ? <p className='msg-preview'>{chat?.data().lastMessage}</p> : <p className='msg-preview'>Empty conversation</p>}
               </div>
-              </Message> 
-            )
+            </div>
+            </Message> 
+          )
           })
-          }                    
+          }                     
           </div>
         </Messages>
+        </MessageBottom>
       </>}
       
       {/* If user has both */}
@@ -387,6 +391,7 @@ padding: 20px;
 
   img {
     width: 50px;
+    height: 50px;
     object-fit: cover;
     border-radius: 50%;
     margin-right: 20px;

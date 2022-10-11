@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import styled from 'styled-components'
 
 //icons
@@ -7,15 +7,20 @@ import { Call } from '@styled-icons/fluentui-system-regular/Call'
 import { MoreCircle } from '@styled-icons/fluentui-system-regular/MoreCircle'
 import { Send } from '@styled-icons/boxicons-solid/Send'
 import { FileImage } from '@styled-icons/boxicons-solid/FileImage'
+import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 
 //redux
-import { openChatInfo, selectChatInfo, selectedChat, selectUser } from '../app/appSlice'
+import { openChatInfo, selectChatInfo, selectedChat, selectUser, setSelectedChat } from '../app/appSlice'
 import { useDispatch, useSelector } from 'react-redux'
 
 //firestore
 import { collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc } from "firebase/firestore"
-import { db } from '../app/firebase'
+import { ref, getDownloadURL, uploadString } from '@firebase/storage'
+import { db, storage } from '../app/firebase'
 import moment from 'moment'
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ChatBox = () => {
 
@@ -29,10 +34,79 @@ const ChatBox = () => {
   const [messages, setMessages] = useState([]);
   const [secondUser, setSecondUser] = useState([]);
 
+  //photo upload
+  const filePickerRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const chooseImage = (e) => {
+    const reader = new FileReader();
+    if(e.target.files[0]){
+      reader.readAsDataURL(e.target.files[0])
+    }
+
+    reader.onload = (readerEvent) => {
+      setSelectedFile(readerEvent.target.result)
+    }
+  }
 
   const sendMessage = async () => {
+    if(loading){
+      return;
+    }
+
+    setLoading(true);
+    //image messages
+    if(selectedFile !== null && chatInfo?.type === 'group'){
+      const notify = toast.loading("Uploading image...", {theme: 'dark'});
+
+      const docRef = await addDoc(collection(db, 'groupChats', chatInfo?.uid, 'messages'), {
+        displayName: user?.displayName,
+        uid: user?.uid,
+        userImage: user?.photoURL,
+        messageType: 'image',
+        timestamp: serverTimestamp()
+      });
+
+      const imageRef = ref(storage, `groupChats/${docRef.id}/privateChatImages`);
+
+      await uploadString(imageRef, selectedFile, 'data_url').then(async snapshot => {
+        const downloadURL = await getDownloadURL(imageRef);
+
+        await updateDoc(doc(db, 'groupChats', chatInfo?.uid, 'messages', docRef.id), {messageImage: downloadURL, lastMessage: `${user?.displayName}: Image`, timestamp: serverTimestamp()});
+
+        toast.update(notify, { render: "Image uploaded!", type: "success", isLoading: false, theme: 'dark', autoClose: 3000 });
+        setSelectedFile(null);
+      }).catch(error => console.log(error))
+
+    } else if (selectedFile !== null && chatInfo?.type === 'private'){
+      const notify = toast.loading("Uploading image...", {theme: 'dark'});
+
+      const docRef = await addDoc(collection(db, 'privateChats', chatInfo?.uid, 'messages'), {
+        displayName: user?.displayName,
+        uid: user?.uid,
+        userImage: user?.photoURL,
+        messageType: 'image',
+        timestamp: serverTimestamp()
+      });
+
+      const imageRef = ref(storage, `privateChats/${docRef.id}/privateChatImages`);
+
+      await uploadString(imageRef, selectedFile, 'data_url').then(async snapshot => {
+        const downloadURL = await getDownloadURL(imageRef);
+
+        await updateDoc(doc(db, 'privateChats', chatInfo?.uid, 'messages', docRef.id), {messageImage: downloadURL, lastMessage: `${user?.displayName}: Image`, timestamp: serverTimestamp()});
+
+        toast.update(notify, { render: "Image uploaded!", type: "success", isLoading: false, theme: 'dark', autoClose: 3000 });
+        setSelectedFile(null);
+      }).catch(error => console.log(error))
+      
+    }
+
+    //text messages
     //for groups
     if(message?.length > 0 && chatInfo?.type === 'group'){
+
       // Add a new document with a generated id.
       await addDoc(collection(db, 'groupChats', chatInfo?.uid, 'messages'), {
         displayName: user?.displayName,
@@ -43,7 +117,7 @@ const ChatBox = () => {
         timestamp: serverTimestamp()
       });
 
-      await updateDoc(doc(db, "groupChats", chatInfo?.uid), {lastMessage: message, timestamp: serverTimestamp()});
+      await updateDoc(doc(db, "groupChats", chatInfo?.uid), {lastMessage: `${user?.displayName}: ${message}`, timestamp: serverTimestamp()});
 
       setMessage('');
     } else if(message?.length > 0 && chatInfo?.type === 'private'){
@@ -61,9 +135,11 @@ const ChatBox = () => {
 
       setMessage('');
     }
+    setLoading(false);
   }
 
   const getMessages = async () => {
+    setMessages([]);
     if(chatInfo?.type === 'group'){
       onSnapshot(query(collection(db, 'groupChats', chatInfo?.uid, 'messages'), orderBy('timestamp', 'asc')), (snapshot) => {
         setMessages(snapshot.docs);
@@ -86,24 +162,6 @@ const ChatBox = () => {
     }
     //eslint-disable-next-line
   }, [chatInfo])
-
-  //send message when enter is pressed too
-  useEffect(() => {
-    const keyDownHandler = event => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        sendMessage();
-      }
-    };
-
-    document.addEventListener('keydown', keyDownHandler);
-
-    return () => {
-      document.removeEventListener('keydown', keyDownHandler);
-    };
-
-    //eslint-disable-next-line
-  }, []);
 
   //scroll down automatically.
   useEffect(() => {
@@ -171,7 +229,7 @@ const ChatBox = () => {
         </Message>*/}
 
         {messages?.map(message => (
-        <Message key={message?.uid} className={message?.data().uid === user?.uid ? 'sent' : 'received'}>
+        <Message className={message?.data().uid === user?.uid ? 'sent' : 'received'}>
           <img src={message?.data().userImage} alt='' className='message-avatar' />
           <div className='message-content'>
             <div className='message-info'>
@@ -179,7 +237,8 @@ const ChatBox = () => {
               <p className='time-sent'>{moment(new Date(message?.data().timestamp?.toMillis())).fromNow()}</p>
             </div>
 
-            <p className={message?.data().uid === user?.uid ? 'message sent-message' : 'message received-message'}>{message?.data().message}</p>
+            {message?.data().messageType === 'image' && message?.data().messageImage && <img className='message-image' src={message?.data().messageImage} alt=''/>}
+            {message?.data().messageType === 'text' && <p className={message?.data().uid === user?.uid ? 'message sent-message' : 'message received-message'}>{message?.data().message}</p>}
           </div>
         </Message>
         ))}
@@ -187,14 +246,30 @@ const ChatBox = () => {
 
       <ChatMessage>
         <div className='input-box'>
+
+          {selectedFile && <div className='input-preview-content'>
+            <img className='img-preview' src={selectedFile} alt=''/>
+            <CloseOutline className='icon' onClick={() => setSelectedFile(null)}/>
+          </div>}
+
           <input type='text' placeholder='Your message...' value={message} onChange={e => setMessage(e.target.value)}/>
         </div>
         
         <div className='icons'>
           <Send className='icon' onClick={() => sendMessage()}/>
-          <FileImage className='icon' />
+          <FileImage className='icon' onClick={() => filePickerRef.current.click()}/>
+          <input type='file' ref={filePickerRef} onChange={chooseImage} hidden />
         </div>
       </ChatMessage>
+
+      <ToastContainer
+        position="bottom-center"
+        hideProgressBar={false}
+        newestOnTop={false}
+        autoClose={3000}
+        closeToast
+        draggable
+        />
     </Wrapper>
   )
 }
@@ -346,8 +421,8 @@ border-right: 1px solid var(--light-grey);
 
 .icons {
   position: absolute;
-  right: 40px;
-  top: 32px;  
+  right: 3vw;
+  top: 30px;  
   margin-right: 2%;
 
   .icon {
@@ -369,18 +444,43 @@ border-right: 1px solid var(--light-grey);
   margin: 20px 0;
   border-radius: 10px;
   background: #35373B;
-  height: 30px;
-  padding: 12px 0 6px 0;
+  //height: 30px;
+  padding: 10px 0 12px 0;
+
+  .input-preview-content {
+    width: 25%;
+    margin-left: 10px;
+    position: relative;
+
+    img {
+      height: 100%;
+      width: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .icon {
+      width: 24px;
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      cursor: pointer;
+    }
+  }
 }
 
 input {
-  width: 85%;
+  width: 80%;
   font-size: .8rem;
   outline: none;
   border: none;
   color: white;
   padding: 0px 15px;
   background: none;
+
+  @media (min-width: 1030px){
+    width: 85%;
+  }
 }
 `
 

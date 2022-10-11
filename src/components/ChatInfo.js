@@ -13,7 +13,7 @@ import { CloseOutline } from '@styled-icons/evaicons-outline/CloseOutline'
 //redux - firebase
 import { useDispatch, useSelector } from 'react-redux'
 import { openChatInfo, selectChatInfo, selectedChat, selectUserData, setSelectedChat } from '../app/appSlice'
-import { doc, updateDoc, getDoc } from 'firebase/firestore'
+import { collection, doc, updateDoc, query, where, onSnapshot, getDoc } from "firebase/firestore"
 import { ref, getDownloadURL, uploadString } from '@firebase/storage'
 import { db, storage } from '../app/firebase'
 
@@ -36,6 +36,7 @@ const ChatInfo = () => {
 
   const filePickerRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [media, setMedia] = useState([]);
 
   const chooseImage = (e) => {
     const reader = new FileReader();
@@ -102,11 +103,28 @@ const ChatInfo = () => {
     }
   }
 
+  const getMedia = async () => {
+    setMedia([]);
+    if(chat?.type === 'group'){
+      onSnapshot(query(collection(db, 'groupChats', chat?.uid, 'messages'), where("messageType", "==", "image")), (snapshot) => {
+        setMedia(snapshot.docs)
+      });
+    }
+
+    if(chat?.type === 'private'){
+      onSnapshot(query(collection(db, 'privateChats', chat?.uid, 'messages'), where("messageType", "==", "image")), (snapshot) => {
+        setMedia(snapshot.docs)
+      });
+    }
+  }
+
   useEffect(() => {
     //set description. we are doing this way, because on chat creation description is not set.
-    if(!chat?.description){
+    if(chat?.description){
       setDescription(chat?.description);
     }
+
+    getMedia();
 
     chat?.type === 'group' && getMembers();
     //eslint-disable-next-line
@@ -147,16 +165,13 @@ const ChatInfo = () => {
         <div className='button' onClick={() => { openInviteUserModal(true);}}>Invite</div>
         </>}
 
-        <Category><p><FileMedia className='icon' /> Media (6)</p> <div className='more-btn'>Show All</div></Category>
+        <Category><p><FileMedia className='icon' /> Media ({media?.length})</p> <div className='more-btn'>Show All</div></Category>
 
         <MediaList>
-          <p className='images-left'>10+</p>
-          <img src='https://images.unsplash.com/photo-1664566486105-e12113484784?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1888&q=80' alt='' />
-          <img src='https://images.unsplash.com/photo-1664539545134-7017e0173232?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=435&q=80' alt='' />
-          <img src='https://images.unsplash.com/photo-1657299156261-4ce1d0a2cf5c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDF8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80' alt='' />
-          <img src='https://images.unsplash.com/photo-1664566486105-e12113484784?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1888&q=80' alt='' />
-          <img src='https://images.unsplash.com/photo-1664539545134-7017e0173232?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=435&q=80' alt='' />
-          <img src='https://images.unsplash.com/photo-1657299156261-4ce1d0a2cf5c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDF8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80' alt='' />
+          {media?.length > 6  && <p className='images-left'>6+</p>}
+          {media?.map(image => (
+            <img key={image?.data().uid} src={image?.data().messageImage} alt='' />
+          ))}
         </MediaList>
 
 
@@ -343,10 +358,6 @@ img {
   object-fit: cover;
   cursor: pointer;
   overflow: hidden;
-
-  :nth-last-child(1){
-    filter: blur(1px);
-  }
 }
 `
 
@@ -367,7 +378,7 @@ padding: 0 20px;
   img {
     width: 36px;
     height: 36px;
-    object-fit: contain;
+    object-fit: cover;
     border-radius: 50%;
     margin-right: 10px;
   }

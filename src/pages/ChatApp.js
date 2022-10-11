@@ -56,7 +56,7 @@ const ChatApp = () => {
             {chat ? <> <ChatBox /> <ChatInfo /> </> : <>
               <div className='no-chat-opened'>
                 <Lottie className='chat-animation' animationData={nomessages} loop={true} />
-                <p>No conversation selected</p>
+                <p>Welcome to blobber.</p>
               </div>
             </>}
         </Wrapper>
