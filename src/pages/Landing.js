@@ -69,7 +69,8 @@ const Landing = () => {
 
     return(
         <Wrapper>
-            <img src='images/gradient.svg' alt='' style={{width: '1920px', height: '600px', position: 'absolute', top: -110, left: 0, zIndex: -1, objectFit: 'cover', left: '50%', transform: 'translateX(-50%)'}} />
+            <div className='gradient' />
+
             <Navigation>
                 <div className='nav-left'>
                     <h3>blobber.</h3>
@@ -102,8 +103,12 @@ const Landing = () => {
                     <Lottie className='chat-animation' animationData={chat} loop={true} />
                 </div>
             </Welcome>
-
-            <AppPreview />
+            
+            <div className='preview'>
+                <AppPreview />
+                <img src='/images/preview.png' alt='' />
+            </div>
+            
 
             <Motivation>
                 <h3>WHY BLOBBER</h3>
@@ -211,7 +216,7 @@ background: #1b1b1b80;
 `
 
 const Motivation = styled.div`
-margin: 60px 0 0 0;
+margin: 120px 0 0 0;
 text-align: center;
 
 .motivation-boxes {
@@ -228,6 +233,10 @@ text-align: center;
         padding: 0 20px 20px 20px;
         margin-bottom: 30px;
         user-select: none;
+
+        @media(max-width: 600px){
+            max-width: 90%;
+        }
 
         a {
             color: var(--dark-green);
@@ -274,31 +283,40 @@ p {
 }
 `
 
-const AppPreview = styled.div`
-background: url('/images/background.jpg');
-width: 90%;
-height: 500px;
-margin: 0 auto;
-border-radius: 10px;
-box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
-`
-
-
 const Welcome = styled.div`
 display: flex;
 justify-content: space-between;
 margin-top: 50px;
+
+@media(max-width: 850px){
+    margin-bottom: 20px;
+}
+
+@media(max-width: 720px){
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 40px;
+}
 
 .welcome-ani {
     position: relative;
     width: 500px;
     bottom: 10px;
     left: 30px;
+
+    @media(max-width: 720px){
+        display: none;
+    }
 }
 
 .welcome-txt {
     width: 60%;
     color: white;
+
+    @media(max-width: 720px){
+        width: 100%;
+    }
 
     h3 {
         font-size: 2.4rem;
@@ -311,6 +329,11 @@ margin-top: 50px;
 
     .welcome-btns {
         display: flex;
+
+        @media(max-width: 720px){
+            justify-content: center;
+            margin-top: 40px;
+        }
 
         a {
             margin-right: 20px;
@@ -325,6 +348,7 @@ margin-top: 50px;
             font-size: .9rem;
             cursor: pointer;
             transition: .3s ease-out;
+            min-width: 50px;
 
             :nth-child(1){
                 :hover {
@@ -363,6 +387,12 @@ padding: 20px 0;
 
     .navigation-desktop {
 
+        display: block;
+        
+        @media(max-width: 690px){
+            display: none;
+        }
+
         a {
             color: white;
             margin-right: 20px;
@@ -382,6 +412,10 @@ padding: 20px 0;
 }
 
 .nav-right {
+
+    @media(max-width: 900px){
+        display: none;
+    }
 
 a {
     text-decoration: none;
@@ -403,10 +437,59 @@ a {
 }
 `
 
+const AppPreview = styled.div`
+background: url('/images/background.jpg');
+width: 90%;
+height: 40vw;
+max-height: 600px;
+margin: 0 auto;
+border-radius: 10px;
+box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+
+@media(max-width: 990px){
+width: 100%;        
+}
+`
+
 const Wrapper = styled.div`
 max-width: 1440px;
 margin: 0 auto;
 padding: 0 5%;
+overflow: hidden;
+
+.gradient {
+    max-width: 1920px;
+    width: 100%;
+    height: 600px;
+    position: absolute;
+    top: -110px;
+    z-index: -1;
+    object-fit: cover;
+    left: 50%;
+    transform: translateX(-50%);
+    background: url('./images/gradient.svg');
+    background-position: center;
+    background-size: cover;
+}
+
+.preview {
+    position: relative;
+
+    img {
+        width: 85%;
+        height: 40vw;
+        max-height: 600px;
+        position: absolute;
+        top: 30px;
+        border-radius: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+
+        @media(max-width: 990px){
+        width: 95%;        
+        }
+    }
+}
 `
 
 export default Landing
